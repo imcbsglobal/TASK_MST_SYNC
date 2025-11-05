@@ -541,11 +541,11 @@ def upload_orders(request):
 
                 cur.execute("""
                     INSERT INTO acc_purchaseorderdetails
-                        (slno, masterslno, item, barcode, qty, rate, mrp, taxcode, ioflag)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        (slno, masterslno, item, barcode, qty, rate, mrp, taxcode, ioflag, itemdetails)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """, (
                     det_slno, masterslno, item_value, final_barcode, qty, rate, mrp,
-                    taxcode_value, ioflag
+                    taxcode_value, ioflag, item_value  # 👈 same product name stored in itemdetails
                 ))
                 
                 logging.info(f"   ✅ Detail inserted successfully")
