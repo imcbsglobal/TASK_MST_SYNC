@@ -177,7 +177,6 @@ def login(request):
 def verify_token(request):
     logging.info("✅ Token verified for user: %s", request.userid)
     return JsonResponse({"status": "success", "userid": request.userid})
-
 @jwt_required
 @require_http_methods(["GET"])
 def data_download(request):
@@ -187,39 +186,53 @@ def data_download(request):
 
     try:
         # MASTER DATA
-        cur.execute("SELECT code, name, place FROM acc_master WHERE super_code = 'SUNCR'")
+        cur.execute("""
+            SELECT code, name, place
+            FROM acc_master
+            WHERE super_code = 'SUNCR'
+        """)
         master_rows = cur.fetchall()
-        master_data = [{"code": r[0], "name": r[1], "place": r[2]} for r in master_rows]
+        master_data = [
+            {"code": r[0], "name": r[1], "place": r[2]}
+            for r in master_rows
+        ]
 
-        # PRODUCT + BATCH (text1 added)
+        # PRODUCT + BATCH
         cur.execute("""
             SELECT 
-                p.code, 
-                p.name, 
-                pb.barcode, 
-                pb.quantity, 
-                pb.salesprice, 
-                pb.bmrp, 
+                p.code,
+                p.name,
+                pb.barcode,
+                pb.quantity,
+                pb.salesprice,
+                pb.bmrp,
                 pb.cost,
                 pb.text1
             FROM acc_product p
-            LEFT JOIN acc_productbatch pb ON p.code = pb.productcode
+            LEFT JOIN acc_productbatch pb
+                ON p.code = pb.productcode
         """)
         product_rows = cur.fetchall()
 
-        product_data = [
-            {
+        product_data = []
+
+        for r in product_rows:
+            barcode = r[2]
+
+            # ❌ SKIP if barcode is NULL or empty
+            if not barcode:
+                continue
+
+            product_data.append({
                 "code": r[0],
                 "name": r[1],
-                "barcode": r[2],
+                "barcode": barcode,
                 "quantity": _to_float(r[3]),
                 "salesprice": _to_float(r[4]),
                 "bmrp": _to_float(r[5]),
                 "cost": _to_float(r[6]),
-                "text1": r[7],        # ✅ NEW FIELD ADDED
-            }
-            for r in product_rows
-        ]
+                "text1": r[7]
+            })
 
         return JsonResponse({
             "status": "success",
@@ -229,7 +242,10 @@ def data_download(request):
 
     except Exception as e:
         logging.exception("data_download failed")
-        return JsonResponse({"detail": f"Failed to download: {e}"}, status=500)
+        return JsonResponse(
+            {"detail": f"Failed to download: {e}"},
+            status=500
+        )
 
     finally:
         try:
@@ -237,6 +253,8 @@ def data_download(request):
             conn.close()
         except Exception:
             pass
+
+
 
 
 
@@ -455,11 +473,13 @@ def get_status(request):
 @require_http_methods(["GET"])
 def get_product_details(request):
     """
-    Returns combined product details from acc_product and acc_productbatch (joined on code=productcode)
+    Returns combined product details from acc_product and acc_productbatch
+    (joined on code = productcode)
     """
     logging.info("📦 Product details request")
     conn = get_connection()
     cur = conn.cursor()
+
     try:
         cur.execute("""
             SELECT 
@@ -470,30 +490,59 @@ def get_product_details(request):
             LEFT JOIN acc_productbatch pb ON p.code = pb.productcode
             ORDER BY p.code
         """)
+
         rows = cur.fetchall()
         out = []
+
         for r in rows:
             expiry = r[16]
             if expiry:
                 expiry = expiry.isoformat() if hasattr(expiry, "isoformat") else str(expiry)
+
             out.append({
-                "code": r[0], "name": r[1], "catagory": r[2], "product": r[3],
-                "brand": r[4], "unit": r[5], "taxcode": r[6],
-                "productcode": r[7], "barcode": r[8],
-                "quantity": _to_float(r[9]), "cost": _to_float(r[10]),
-                "bmrp": _to_float(r[11]), "salesprice": _to_float(r[12]),
-                "secondprice": _to_float(r[13]), "thirdprice": _to_float(r[14]),
-                "supplier": r[15], "expirydate": expiry
+                "code": r[0],
+                "name": r[1],
+                "catagory": r[2],
+                "product": r[3],
+                "brand": r[4],
+                "unit": r[5],
+                "taxcode": r[6],
+                "productcode": r[7],
+                "barcode": r[8],
+                "quantity": _to_float(r[9]),
+                "cost": _to_float(r[10]),
+                "bmrp": _to_float(r[11]),
+                "salesprice": _to_float(r[12]),
+                "secondprice": _to_float(r[13]),
+                "thirdprice": _to_float(r[14]),
+                "supplier": r[15],
+                "expirydate": expiry
             })
-        return JsonResponse({"status": "success", "count": len(out), "data": out})
+
+        return JsonResponse({
+            "status": "success",
+            "count": len(out),
+            "data": out
+        })
+
     except Exception as e:
         logging.exception("get_product_details failed")
-        return JsonResponse({"detail": f"Failed to fetch product details: {e}"}, status=500)
+        return JsonResponse(
+            {"detail": f"Failed to fetch product details: {e}"},
+            status=500
+        )
+
     finally:
         try:
-            cur.close(); conn.close()
+            cur.close()
+            conn.close()
         except Exception:
             pass
 
 
 
+
+# SELECT *
+# FROM acc_purchaseorderdetails
+# WHERE masterslno = -1000
+# ORDER BY slno DESC;
