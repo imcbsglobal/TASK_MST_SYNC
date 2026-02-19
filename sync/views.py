@@ -97,17 +97,17 @@ def pair_check(request):
         logging.error("❌ Invalid password")
         return JsonResponse({"detail": "Invalid password"}, status=401)
 
-    exe_name = "SyncService.exe"
+    exe_name = "TASK_MST_SYNC.exe"
     base_dir = os.path.dirname(sys.executable) if getattr(sys, "frozen", False) else os.path.dirname(os.path.abspath(__file__))
     exe_path = os.path.join(base_dir, exe_name)
 
     if not os.path.exists(exe_path):
-        logging.error("❌ SyncService.exe not found at %s", exe_path)
-        return JsonResponse({"detail": "SyncService.exe not found"}, status=404)
+        logging.error("❌ TASK_MST_SYNC.exe not found at %s", exe_path)
+        return JsonResponse({"detail": "TASK_MST_SYNC.exe not found"}, status=404)
 
     for proc in psutil.process_iter(["pid", "name"]):
         try:
-            if proc.info["name"] and "SyncService.exe" in proc.info["name"]:
+            if proc.info["name"] and "TASK_MST_SYNC.exe" in proc.info["name"]:
                 logging.info("🔄 SyncService already running (PID %s)", proc.info["pid"])
                 return JsonResponse({"status": "success", "message": "SyncService already running", "pair_successful": True})
         except Exception:
