@@ -45,5 +45,5 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon=['TASK_MST.png'],
+    icon=['TASK_MST.ico'],
 )

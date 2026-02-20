@@ -14,6 +14,7 @@ import json
 import os
 import socket
 import sys
+import requests
 from typing import List, Tuple
 
 # ============================= INTERNAL CONSTANTS =============================
@@ -21,6 +22,8 @@ DB_UID = "dba"
 DB_PWD = "(*$^)"
 DEFAULT_PORT = 8000
 DJANGO_SETTINGS = "django_sync.settings"
+
+ACTIVATE_API = "https://activate.imcbs.com/corporate-clientid/list/"
 
 # ----------------------------- helpers ---------------------------------------
 def _exe_dir() -> str:
@@ -40,6 +43,7 @@ def load_config(exe_dir: str) -> dict:
         "ip": "auto",
         "port": DEFAULT_PORT,
         "dsn": None,
+        "client_id": None,
         "settings": DJANGO_SETTINGS,
     }
 
@@ -51,8 +55,33 @@ def load_config(exe_dir: str) -> dict:
     if not cfg.get("dsn"):
         raise RuntimeError("DSN missing in config.json")
 
+    if not cfg.get("client_id"):
+        raise RuntimeError("client_id missing in config.json")
+
     cfg["dsn"] = _strip_comment(cfg["dsn"])
+    cfg["client_id"] = _strip_comment(cfg["client_id"])
     return cfg
+
+# ----------------------------- LICENSE CHECK ---------------------------------
+def is_task_mst_enabled(client_id: str) -> bool:
+    try:
+        res = requests.get(ACTIVATE_API, timeout=10)
+        res.raise_for_status()
+        payload = res.json()
+
+        if not payload.get("success"):
+            return False
+
+        for corp in payload.get("data", []):
+            for shop in corp.get("shops", []):
+                if shop.get("client_id") == client_id:
+                    return "TASK MST" in shop.get("projects", [])
+
+        return False
+
+    except Exception as e:
+        print(f"License validation failed: {e}")
+        return False
 
 # ----------------------------- IP auto-pick ----------------------------------
 def ipv4_candidates() -> list[str]:
@@ -118,6 +147,11 @@ def run_server(bind_ip: str, port: int):
 def main():
     exe_dir = _exe_dir()
     cfg = load_config(exe_dir)
+
+    # 🔐 LICENSE VALIDATION
+    if not is_task_mst_enabled(cfg["client_id"]):
+        print("❌ Unauthorized client or TASK MST not enabled")
+        sys.exit(1)
 
     # ENV (ONLY FROM config.json)
     os.environ["DB_DSN"] = cfg["dsn"]

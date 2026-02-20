@@ -7,7 +7,7 @@ from tkinter import messagebox
 from datetime import datetime
 import re
 
-from PIL import Image, ImageTk   # ✅ for logo
+from PIL import Image, ImageTk
 
 # ===============================
 # HIDE CONSOLE (WINDOWS)
@@ -65,11 +65,11 @@ class Redirect:
             return
 
         ts = datetime.now().strftime("%H:%M:%S")
-
         tag = "info"
-        if "running" in msg:
+
+        if "running" in msg.lower():
             tag = "success"
-        if "ERROR" in msg or "Exception" in msg:
+        if "error" in msg.lower() or "exception" in msg.lower():
             tag = "error"
 
         self.widget.after(
@@ -88,6 +88,18 @@ class Redirect:
 # BACKEND CONTROL
 # ===============================
 backend_running = False
+
+def update_status(running):
+    if running:
+        status_indicator.config(bg="#22c55e")
+        status_label.config(text="ONLINE", fg="#22c55e")
+        start_btn.config(state="disabled")
+        stop_btn.config(state="normal")
+    else:
+        status_indicator.config(bg="#ef4444")
+        status_label.config(text="OFFLINE", fg="#ef4444")
+        start_btn.config(state="normal")
+        stop_btn.config(state="disabled")
 
 def start_backend():
     global backend_running
@@ -117,26 +129,21 @@ def start_backend():
 def stop_backend():
     if not backend_running:
         return
-    if messagebox.askyesno("Stop Service", "Stop TASK MST Sync Service?"):
-        os._exit(0)
 
-def update_status(running):
-    if running:
-        status_dot.config(bg="#22c55e")
-        status_lbl.config(text="ONLINE", fg="#22c55e")
-    else:
-        status_dot.config(bg="#ef4444")
-        status_lbl.config(text="OFFLINE", fg="#ef4444")
+    if messagebox.askyesno(
+        "Stop Service",
+        "Are you sure you want to stop the service?\n\nAll connections will be closed."
+    ):
+        os._exit(0)
 
 # ===============================
 # GUI ROOT
 # ===============================
 root = tk.Tk()
-root.title("TASK MST Sync Tool")
-root.geometry("1100x650")
+root.title("TASK MST Sync Tool - Professional Edition")
+root.geometry("1200x700")
 root.configure(bg="#f8fafc")
 
-# ✅ WINDOW / TASKBAR ICON
 try:
     root.iconbitmap(os.path.join(BASE_DIR, "TASK_MST.ico"))
 except Exception:
@@ -145,7 +152,7 @@ except Exception:
 # ===============================
 # HEADER
 # ===============================
-header = tk.Frame(root, bg="#ffffff", height=120)
+header = tk.Frame(root, bg="#ffffff", height=140)
 header.pack(fill="x")
 header.pack_propagate(False)
 
@@ -157,7 +164,7 @@ left = tk.Frame(header_inner, bg="#ffffff")
 left.pack(side="left")
 
 try:
-    img = Image.open(os.path.join(BASE_DIR, "TASK_MST.png")).resize((60, 60))
+    img = Image.open(os.path.join(BASE_DIR, "TASK_MST.png")).resize((48, 48))
     logo_img = ImageTk.PhotoImage(img)
     logo_lbl = tk.Label(left, image=logo_img, bg="#ffffff")
     logo_lbl.image = logo_img
@@ -188,58 +195,82 @@ tk.Label(
 right = tk.Frame(header_inner, bg="#ffffff")
 right.pack(side="right")
 
-status_dot = tk.Label(right, bg="#ef4444", width=2, height=1)
-status_dot.pack(side="left", padx=(0, 6))
+status_card = tk.Frame(right, bg="#f1f5f9")
+status_card.pack(padx=20, pady=12)
 
-status_lbl = tk.Label(
-    right,
+tk.Label(
+    status_card,
+    text="STATUS:",
+    font=("Segoe UI", 9, "bold"),
+    fg="#64748b",
+    bg="#f1f5f9"
+).pack(side="left", padx=(0, 10))
+
+status_indicator = tk.Label(status_card, bg="#ef4444", width=2, height=1)
+status_indicator.pack(side="left", padx=(0, 8))
+
+status_label = tk.Label(
+    status_card,
     text="OFFLINE",
     font=("Segoe UI", 11, "bold"),
     fg="#ef4444",
-    bg="#ffffff"
+    bg="#f1f5f9"
 )
-status_lbl.pack(side="left")
+status_label.pack(side="left")
 
 # ===============================
 # BUTTONS
 # ===============================
-btns = tk.Frame(root, bg="#f8fafc")
-btns.pack(pady=15)
+btn_container = tk.Frame(root, bg="#f8fafc")
+btn_container.pack(pady=20)
 
-tk.Button(
-    btns,
-    text="▶ Start Service",
+start_btn = tk.Button(
+    btn_container,
+    text="▶  Start Service",
+    command=start_backend,
     bg="#22c55e",
     fg="white",
     font=("Segoe UI", 10, "bold"),
-    padx=20,
-    pady=10,
+    padx=25,
+    pady=12,
     relief="flat",
-    command=start_backend
-).pack(side="left", padx=8)
+    cursor="hand2"
+)
+start_btn.pack(side="left", padx=8)
 
-tk.Button(
-    btns,
-    text="■ Stop Service",
+stop_btn = tk.Button(
+    btn_container,
+    text="■  Stop Service",
+    command=stop_backend,
     bg="#ef4444",
     fg="white",
     font=("Segoe UI", 10, "bold"),
-    padx=20,
-    pady=10,
+    padx=25,
+    pady=12,
     relief="flat",
-    command=stop_backend
-).pack(side="left")
+    cursor="hand2",
+    state="disabled"
+)
+stop_btn.pack(side="left")
 
 # ===============================
-# INFO
+# INFO CARDS
 # ===============================
 info = tk.Frame(root, bg="#f8fafc")
-info.pack(fill="x", padx=30, pady=10)
+info.pack(fill="x", padx=30, pady=(0, 20))
 
 tk.Label(
     info,
-    text=f"Server URL: http://{LOCAL_IP}:{PORT}",
-    font=("Segoe UI", 12, "bold"),
+    text="🌐 Server Address",
+    font=("Segoe UI", 10, "bold"),
+    fg="#475569",
+    bg="#f8fafc"
+).pack(anchor="w")
+
+tk.Label(
+    info,
+    text=f"http://{LOCAL_IP}:{PORT}",
+    font=("Segoe UI", 14, "bold"),
     fg="#2563eb",
     bg="#f8fafc"
 ).pack(anchor="w")
@@ -247,15 +278,31 @@ tk.Label(
 # ===============================
 # LOG AREA
 # ===============================
-log_frame = tk.Frame(root, bg="#0f172a")
-log_frame.pack(fill="both", expand=True, padx=30, pady=(10, 20))
+log_container = tk.Frame(root, bg="#ffffff", highlightbackground="#e2e8f0", highlightthickness=1)
+log_container.pack(fill="both", expand=True, padx=30, pady=(0, 20))
+
+log_header = tk.Frame(log_container, bg="#f8fafc", height=45)
+log_header.pack(fill="x")
+
+tk.Label(
+    log_header,
+    text="📊 Server Activity Monitor",
+    font=("Segoe UI", 11, "bold"),
+    fg="#0f172a",
+    bg="#f8fafc"
+).pack(side="left", padx=15, pady=10)
+
+log_frame = tk.Frame(log_container, bg="#0f172a")
+log_frame.pack(fill="both", expand=True)
 
 log = tk.Text(
     log_frame,
     bg="#0f172a",
     fg="#e2e8f0",
     font=("Consolas", 10),
-    relief="flat"
+    relief="flat",
+    padx=15,
+    pady=10
 )
 log.pack(fill="both", expand=True)
 
@@ -268,6 +315,6 @@ sys.stdout = Redirect(log)
 sys.stderr = Redirect(log)
 
 update_status(False)
-log.insert(tk.END, "⚡ TASK MST Sync Tool ready\n", "info")
+log.insert(tk.END, "⚡ TASK MST Sync Tool initialized\n", "info")
 
 root.mainloop()
