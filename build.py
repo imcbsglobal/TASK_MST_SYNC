@@ -21,6 +21,7 @@ EXTRA_DATA = [
     ("db.sqlite3", "."),            # optional starter DB
     ("TASK_MST.png", "."),          # UI logo
     ("TASK_MST.ico", "."),          # icon (runtime / backup)
+    ("imcbs_logo.png", "."),        # IMCBS company logo
 ]
 
 REQUIREMENTS = [

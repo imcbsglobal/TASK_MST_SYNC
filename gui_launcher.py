@@ -1,11 +1,13 @@
 import os
 import sys
+import json
 import threading
 import socket
 import tkinter as tk
 from tkinter import messagebox
 from datetime import datetime
 import re
+import webbrowser
 
 from PIL import Image, ImageTk
 
@@ -54,6 +56,21 @@ def get_local_ip():
 LOCAL_IP = get_local_ip()
 
 # ===============================
+# READ CONFIG (DSN + CLIENT ID)
+# ===============================
+def _read_config():
+    cfg_path = os.path.join(BASE_DIR, "config.json")
+    try:
+        with open(cfg_path, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:
+        return {}
+
+CONFIG      = _read_config()
+CONFIG_DSN  = CONFIG.get("dsn", "(not set)")
+CONFIG_CID  = CONFIG.get("client_id", "(not set)")
+
+# ===============================
 # STDOUT REDIRECT → UI LOG
 # ===============================
 class Redirect:
@@ -69,8 +86,10 @@ class Redirect:
 
         if "running" in msg.lower():
             tag = "success"
-        if "error" in msg.lower() or "exception" in msg.lower():
+        if any(kw in msg.lower() for kw in ("error", "exception", "mismatch", "aborted", "unauthorized")):
             tag = "error"
+        if "warning" in msg.lower() or "⚠" in msg:
+            tag = "warn"
 
         self.widget.after(
             0,
@@ -114,10 +133,7 @@ def start_backend():
         try:
             SyncService.main()
         except SystemExit:
-            messagebox.showerror(
-                "License Error",
-                "Unauthorized client or TASK MST not enabled"
-            )
+            pass  # error already printed to terminal log above
         except Exception as e:
             log.insert(tk.END, f"❌ Backend crashed: {e}\n", "error")
 
@@ -185,16 +201,17 @@ tk.Label(
 
 tk.Label(
     title_box,
-    text="Professional Data Synchronization Service",
+    text="Professional Sync Service",
     font=("Segoe UI", 11),
     fg="#64748b",
     bg="#ffffff"
 ).pack(anchor="w")
 
-# ---- RIGHT (STATUS)
+# ---- RIGHT (IMCBS LOGO + STATUS)
 right = tk.Frame(header_inner, bg="#ffffff")
 right.pack(side="right")
 
+# Status card
 status_card = tk.Frame(right, bg="#f1f5f9")
 status_card.pack(padx=20, pady=12)
 
@@ -275,6 +292,26 @@ tk.Label(
     bg="#f8fafc"
 ).pack(anchor="w")
 
+# DSN + Client ID row
+db_row = tk.Frame(info, bg="#f8fafc")
+db_row.pack(anchor="w", pady=(8, 0))
+
+tk.Label(
+    db_row,
+    text="🗄️  DSN:",
+    font=("Segoe UI", 10, "bold"),
+    fg="#475569",
+    bg="#f8fafc"
+).pack(side="left")
+
+tk.Label(
+    db_row,
+    text=CONFIG_DSN,
+    font=("Segoe UI", 10, "bold"),
+    fg="#0f172a",
+    bg="#f8fafc"
+).pack(side="left", padx=(6, 0))
+
 # ===============================
 # LOG AREA
 # ===============================
@@ -307,8 +344,9 @@ log = tk.Text(
 log.pack(fill="both", expand=True)
 
 log.tag_config("success", foreground="#22c55e")
-log.tag_config("error", foreground="#ef4444")
-log.tag_config("info", foreground="#3b82f6")
+log.tag_config("error",   foreground="#ef4444")
+log.tag_config("warn",    foreground="#f59e0b")
+log.tag_config("info",    foreground="#3b82f6")
 
 # Redirect stdout/stderr
 sys.stdout = Redirect(log)
@@ -316,5 +354,39 @@ sys.stderr = Redirect(log)
 
 update_status(False)
 log.insert(tk.END, "⚡ TASK MST Sync Tool initialized\n", "info")
+
+# ===============================
+# FOOTER — POWERED BY IMCBS
+# ===============================
+footer = tk.Frame(root, bg="#f1f5f9", height=60)
+footer.pack(fill="x", side="bottom")
+footer.pack_propagate(False)
+
+footer_inner = tk.Frame(footer, bg="#f1f5f9")
+footer_inner.pack(expand=True)
+
+def open_imcbs(e=None):
+    webbrowser.open("https://www.imcbs.com")
+
+try:
+    imcbs_img = Image.open(os.path.join(BASE_DIR, "imcbs_logo.png")).resize((130, 50), Image.LANCZOS)
+    imcbs_photo = ImageTk.PhotoImage(imcbs_img)
+    imcbs_logo_lbl = tk.Label(footer_inner, image=imcbs_photo, bg="#f1f5f9", cursor="hand2")
+    imcbs_logo_lbl.image = imcbs_photo
+    imcbs_logo_lbl.pack(side="left", padx=(0, 10), pady=5)
+    imcbs_logo_lbl.bind("<Button-1>", open_imcbs)
+except Exception:
+    pass
+
+powered_lbl = tk.Label(
+    footer_inner,
+    text="Powered by imcbs.com",
+    font=("Segoe UI", 11, "underline"),
+    fg="#2563eb",
+    bg="#f1f5f9",
+    cursor="hand2"
+)
+powered_lbl.pack(side="left", pady=5)
+powered_lbl.bind("<Button-1>", open_imcbs)
 
 root.mainloop()

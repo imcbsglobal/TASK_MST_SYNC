@@ -2,7 +2,7 @@
 from PyInstaller.utils.hooks import collect_submodules
 from PyInstaller.utils.hooks import collect_all
 
-datas = [('config.json', '.'), ('django_sync', 'django_sync'), ('db.sqlite3', '.'), ('TASK_MST.png', '.'), ('TASK_MST.ico', '.')]
+datas = [('config.json', '.'), ('django_sync', 'django_sync'), ('db.sqlite3', '.'), ('TASK_MST.png', '.'), ('TASK_MST.ico', '.'), ('imcbs_logo.png', '.')]
 binaries = []
 hiddenimports = []
 hiddenimports += collect_submodules('django')
